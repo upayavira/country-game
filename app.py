@@ -31,6 +31,10 @@ def get_zoom(country):
 def index():
   return send_from_directory("app", "index.html")
 
+@app.route("/app/<path:f>")
+def app_files(f):
+  return send_from_directory("app", f)
+
 @app.route("/libs/<path:f>")
 def libs(f):
   return send_from_directory("bower_components", f)
