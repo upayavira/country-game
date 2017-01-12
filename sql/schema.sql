@@ -15,16 +15,18 @@ CREATE TABLE country (
     lon FLOAT NULL,
     landlocked bit NULL,
     area int NULL,
+    json blob NOT NULL,
     PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;;
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 
 CREATE TABLE language (
     country_id varchar(4) NOT NULL,
     language_code varchar(4) NOT NULL,
     language_name varchar(30) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;;
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 
 CREATE TABLE border (
     country_id varchar(4) NOT NULL,
     border varchar(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;;
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
+
