@@ -1,0 +1,37 @@
+<h1>Countries</h1>
+<div ng-hide="allDone">
+    <div class="panel">
+        {{successes}} of {{criteria.count}} countries guessed...
+    </div>
+    <div>
+        <div ng-if="field == 'name' || showAll">
+            <div>Country: <b>{{country.name.common}}</b></div>
+        </div>
+        <div ng-if="field == 'capital' || showAll">
+            <b>
+                <div>Capital: <b>{{country.capital}}</b></div>
+            </b>
+        </div>
+        <div ng-show="showRegion || showAll">
+            <div>Region: <b>{{country.region}}</b></div>
+            <div ng-show="country.subRegion">Sub-region: <b>-{{country.subRegion}}-</b></div>
+        </div>
+        <div ng-show="showJSON">{{country | json}}
+        </div>
+        <div ng-show="showAll">
+            <br/>
+            <button class="btn" ng-click="success()">success</button>
+            <button class="btn" ng-click="failure()">oops</button>
+        </div>
+    </div>
+    <br/>
+    <button class="btn" ng-hide="showRegion || showAll" ng-click="showRegion=true">Show Region</button>
+    <button class="btn" ng-hide="showAll" ng-click="showAll=true">Reveal</button>
+    <button class="btn" ng-hide="showJSON" ng-click="showJSON=true">JSON</button>
+</div>
+<div ng-show="allDone">
+    <div class="panel">
+        Well done!! You guessed all {{criteria.count}} countries, in {{tries}} tries.<br/>
+        <button class="btn" ng-click="restart()">restart</button>
+    </div>
+</div>

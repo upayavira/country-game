@@ -1,73 +1,90 @@
 #!/usr/bin/python
-from flask import Flask, request, send_from_directory, jsonify, render_template
-app = Flask(__name__, template_folder="tpl")
-
-import json
+from flask import Flask, request, send_from_directory, jsonify, render_template, g
 import random
 import math
 import os
+import MySQLdb
+from MySQLdb.cursors import DictCursor
+import logging
+import json
 
+app = Flask(__name__, template_folder="tpl")
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 GOOGLE_API_KEY= os.environ.get("GOOGLE_API_KEY")
-COUNTRIES_FILE = os.environ.get("COUNTRIES_FILE")
-print "GOOGLE API: %s" % GOOGLE_API_KEY
 
-with open(COUNTRIES_FILE) as f:
-  text = f.read()
+@app.before_request
+def before_request():
+ g.db = MySQLdb.connect(host="172.17.0.1", passwd="root", user="root", db="countries", use_unicode=True,
+                     charset="utf8")
 
-  countries = json.loads(text)
-
-def find_by_name(countries, name):
-  for country in countries:
-    if country["name"]["common"] == name:
-      return country
-
-def get_zoom(country):
+def get_zoom(area):
   GLOBE_WIDTH = 256
   GLOBE_CIRCUMFERENCE=40075000
   pixelWidth=0.2798
-  return int(math.log(pixelWidth * GLOBE_CIRCUMFERENCE / math.sqrt(country["area"]) / GLOBE_WIDTH) / math.log(2))
+  return int(math.log(pixelWidth * GLOBE_CIRCUMFERENCE / math.sqrt(area) / GLOBE_WIDTH) / math.log(2))
+
+
+def find_countries(minimum_country_size, maximum_country_size, country_count, fields, sort):
+    if sort == "random" or sort not in ("id", "area"):
+        sort = "RAND()"
+    sql = "SELECT id, area, common_name, json FROM country WHERE area >= %%s AND area <= %%s ORDER BY %s LIMIT %%s;" % sort
+    cursor = g.db.cursor(DictCursor)
+    logger.info(sql, minimum_country_size, maximum_country_size, country_count)
+    cursor.execute(sql, [minimum_country_size, maximum_country_size, country_count])
+    countries = []
+    for row in cursor.fetchall():
+        if fields == "all":
+            country = json.loads(row["json"])
+            country["zoom"] = get_zoom(country["area"])
+            country["id"] = row["id"]
+            countries.append(country)
+        elif fields == "sizes":
+            country = {"id": row["id"], "name": row["common_name"], "area": row["area"]}
+            countries.append(country)
+        else:
+            logger.error("Unknown fields: %s", fields)
+            return []
+    cursor.close()
+
+    return countries
+
 
 @app.route("/")
 def index():
   return send_from_directory("app", "index.html")
 
+
 @app.route("/app/<path:f>")
 def app_files(f):
   return send_from_directory("app", f)
+
 
 @app.route("/libs/<path:f>")
 def libs(f):
   return send_from_directory("bower_components", f)
 
+
 @app.route("/css/<f>")
 def css(f):
   return send_from_directory("app/css", f)
 
-@app.route("/countries")
-def show_countries():
-  return render_template("countries.tpl", countries=countries)
 
-@app.route("/countries/random")
-def show_random_country():
-  country = countries[random.randint(0,len(countries)-1)]
-  return render_template("random-country.tpl", country=country, zoom=get_zoom(country), api_key=GOOGLE_API_KEY)
+@app.route("/api/countries/")
+@app.route("/api/countries")
+def countries_find():
+    minimum_country_size = int(request.args.get("minimum_size", 0))
+    maximum_country_size = int(request.args.get("maximum_size", "100000000"))
+    fields = request.args.get("fields", "all")
+    sort = request.args.get("sort", "random")
+    country_count = int(request.args.get("count", 10000))
+    countries = find_countries(minimum_country_size, maximum_country_size, country_count, fields, sort)
 
-@app.route("/capitals/random")
-def show_random_capital():
-  country = countries[random.randint(0,len(countries)-1)]
-  return render_template("random-capital.tpl", country=country, zoom=get_zoom(country), api_key=GOOGLE_API_KEY)
-
-@app.route("/countries/<country_name>")
-def show_country(country_name):
-  country=find_by_name(countries, country_name)
-  return render_template("country.tpl", country=country, zoom=get_zoom(country), api_key=GOOGLE_API_KEY)
-
-@app.route("/capitals")
-def show_capitals():
-  return render_template("capitals.tpl", countries=countries)
+    return jsonify({"countries":countries})
 
 
 def run():
   app.run("0.0.0.0", 8080, debug=True)
 
-run()
+if __name__ == "__main__":
+  run()
